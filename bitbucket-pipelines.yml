@@ -1,0 +1,130 @@
+## This is an example Starter pipeline configuration
+## Use a skeleton to build, test and deploy using manual and parallel steps
+## -----
+## You can specify a custom docker image from Docker Hub as your build environment.
+##image: composer:2.0
+image: pyguerder/bitbucket-pipelines-php74
+pipelines:
+  # default - contains the steps that will run on every push.
+  branches:
+    master:
+      - step:
+          artifacts:
+            - application.tar.gz
+          script:
+            - git archive --format=tar.gz master -o application.tar.gz
+      - step:
+          name: Deploying to Master Heroku
+          script:
+            - pipe: atlassian/heroku-deploy:1.2.1
+              variables:
+                HEROKU_API_KEY: $HEROKU_API_KEY
+                HEROKU_APP_NAME: $SPURT_MASTER_REPO
+                ZIP_FILE: "application.tar.gz"
+      - step:
+          name: Deploy to production on AWS
+          deployment: production
+          script:
+            - pipe: atlassian/ssh-run:0.2.2
+              variables:
+                SSH_USER: $SSH_USER
+                SERVER: $AWS_MASTER_SERVER
+                COMMAND: $BUILD_MASTER_SCRIPT
+
+    staging:
+      - step:
+          artifacts:
+            - staging.tar.gz
+          script:
+            - git archive --format=tar.gz staging -o staging.tar.gz
+      - step:
+          name: Deploy to staging on Heroku
+          script:
+            - pipe: atlassian/heroku-deploy:1.2.1
+              variables:
+                HEROKU_API_KEY: $HEROKU_API_KEY
+                HEROKU_APP_NAME: $SPURT_STAGING_REPO
+                ZIP_FILE: "staging.tar.gz"
+      - step:
+          name: Deploy to staging on AWS
+          deployment: staging
+          script:
+            - pipe: atlassian/ssh-run:0.2.2
+              variables:
+                SSH_USER: $SSH_USER
+                SERVER: $AWS_STAGING_SERVER
+                COMMAND: $BUILD_STAGING_SCRIPT
+
+definitions:
+  services:
+    mysql:
+      image: mysql:8.0
+      environment:
+        MYSQL_DATABASE: 'laravel-pipeline'
+        MYSQL_RANDOM_ROOT_PASSWORD: 'yes'
+        MYSQL_USER: 'homestead'
+        MYSQL_PASSWORD: 'secret'
+#image: php:7.3
+#
+#pipelines:
+#  # default - contains the steps that will run on every push.
+#  branches:
+#    master:
+#      - step:
+#          name: Build and Test Master
+#          script:
+#            - pipe: atlassian/ssh-run:0.2.2
+#              variables:
+#                SSH_USER: $SSH_USER
+#                SERVER: $AWS_SERVER
+#                COMMAND: BUILD_MASTER_SCRIPT
+#          caches:
+#            - composer
+#          artifacts:
+#            - storage/**
+#            - vendor/**
+#            - public/**
+#            - .env
+#            - application.tar.gz
+#          script:
+#            - composer install
+#            - ln -f -s .env.pipelines .env
+#            - ./vendor/bin/phpunit --verbose
+#            - git archive --format=tar.gz master -o application.tar.gz
+#      - step:
+#          name: Deploying to Heroku Master
+#          deployment: production
+#          script:
+#            - pipe: atlassian/heroku-deploy:1.2.1
+#              variables:
+#                HEROKU_API_KEY: $HEROKU_API_KEY
+#                HEROKU_APP_NAME: $SPURT_MASTER_REPO
+#                ZIP_FILE: "application.tar.gz"
+#
+#    staging:
+#      - step:
+#          name: Build and Push Docker Image
+#          script:
+#            - pipe: atlassian/ssh-run:0.2.2
+#              variables:
+#                SSH_USER: $SSH_USER
+#                SERVER: $AWS_SERVER
+#                COMMAND: $BUILD_STAGING_SCRIPT
+##          name: Deploy to staging
+##          deployment: staging
+##          script:
+##            - pipe: atlassian/heroku-deploy:1.2.1
+##              variables:
+##                HEROKU_API_KEY: $HEROKU_API_KEY
+##                HEROKU_APP_NAME: $SPURT_STAGING_REPO
+##                ZIP_FILE: "staging.tar.gz"
+#
+#definitions:
+#  services:
+#    mysql:
+#      image: mysql:8.0
+#      environment:
+#        MYSQL_DATABASE: 'laravel-pipeline'
+#        MYSQL_RANDOM_ROOT_PASSWORD: 'yes'
+#        MYSQL_USER: 'homestead'
+#        MYSQL_PASSWORD: 'secret'
